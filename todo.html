@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+     <style>
+        body {
+            background-image: url('neutral-tone-texture-abstract-background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .overlay {
+            background-color: rgba(0, 0, 0, 0.1);
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+    .todo-container {
+        border: 2px solid #3b82f6;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md todo-container">
+        <h1 class="text-2xl font-bold mb-4 text-center">To-Do List</h1>
+        <div class="flex mb-4">
+            <input id="taskInput" type="text" class="flex-1 p-2 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter a task">
+            <button onclick="addTask()" class="bg-blue-500 text-white p-2 rounded-r-lg hover:bg-blue-600">Add</button>
+        </div>
+        <ul id="taskList" class="space-y-2"></ul>
+    </div>
+    <script>
+    // Load tasks from backend when the page loads
+    document.addEventListener('DOMContentLoaded', loadTasks);
+
+    async function addTask() {
+        const taskInput = document.getElementById('taskInput');
+        const taskText = taskInput.value.trim();
+        if (taskText === '') {
+            alert('Please enter a task!');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:3000/tasks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: taskText })
+            });
+            const task = await response.json();
+            if (response.ok) {
+                renderTask(task);
+                taskInput.value = '';
+            } else {
+                alert(task.error || 'Failed to add task');
+            }
+        } catch (error) {
+            alert('Error adding task: ' + error.message);
+        }
+    }
+
+    function renderTask(task) {
+        const taskList = document.getElementById('taskList');
+        const li = document.createElement('li');
+        li.className = `flex items-center justify-between p-2 border-b ${task.completed ? 'line-through text-gray-500' : ''}`;
+        li.dataset.id = task.id;
+
+        li.innerHTML = `
+            <span onclick="toggleTask(${task.id})" class="cursor-pointer flex-1">${task.text}</span>
+            <button onclick="removeTask(${task.id})" class="text-red-500 hover:text-red-700">Delete</button>
+        `;
+
+        taskList.appendChild(li);
+    }
+
+    async function loadTasks() {
+        try {
+            const response = await fetch('http://localhost:3000/tasks');
+            const tasks = await response.json();
+            if (response.ok) {
+                const taskList = document.getElementById('taskList');
+                taskList.innerHTML = '';
+                tasks.forEach(task => renderTask(task));
+            } else {
+                alert('Failed to load tasks');
+            }
+        } catch (error) {
+            alert('Error loading tasks: ' + error.message);
+        }
+    }
+
+    async function toggleTask(id) {
+        try {
+            const response = await fetch(`http://localhost:3000/tasks/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.ok) {
+                loadTasks();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to toggle task');
+            }
+        } catch (error) {
+            alert('Error toggling task: ' + error.message);
+        }
+    }
+
+    async function removeTask(id) {
+        try {
+            const response = await fetch(`http://localhost:3000/tasks/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                loadTasks();
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Failed to delete task');
+            }
+        } catch (error) {
+            alert('Error deleting task: ' + error.message);
+        }
+    }
+</script>
+</body>
+</html>
